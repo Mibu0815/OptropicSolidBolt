@@ -495,18 +495,19 @@ export const AnalyticsService = {
   ): Promise<AnalyticsResult | null> {
     const cacheKey = userId ? `overview_user_${userId}` : "overview_global";
 
-    const cached = await db.analyticsCache.findUnique({
+    const cached = await db.analyticsCache.findFirst({
       where: { cacheKey },
+      orderBy: { createdAt: "desc" },
     });
 
     if (!cached) {
       return null;
     }
 
-    const age = Date.now() - cached.updatedAt.getTime();
+    const age = Date.now() - cached.createdAt.getTime();
     const maxAge = maxAgeMinutes * 60 * 1000;
 
-    if (age > maxAge) {
+    if (age > maxAge || Date.now() > cached.expiresAt.getTime()) {
       return null;
     }
 

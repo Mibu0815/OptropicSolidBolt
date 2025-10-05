@@ -22,9 +22,6 @@ export function initSentry() {
     dsn: SENTRY_DSN,
     environment: env.NODE_ENV,
     tracesSampleRate: isProduction ? 0.1 : 1.0,
-    integrations: [
-      new Sentry.Integrations.Http({ tracing: true }),
-    ],
     beforeSend(event, hint) {
       if (env.NODE_ENV === "development") {
         console.log("Sentry Event:", event);
