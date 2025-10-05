@@ -1,0 +1,319 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres:postgres@postgres/app" // hardcoded because it's an internal docker connection
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  
+  email     String   @unique
+  password  String   // bcrypt hashed
+  firstName String
+  lastName  String
+  role      UserRole @default(OPERATOR) // Keep for backward compatibility during migration
+  archetypeId Int?   // New archetype-based role system
+  tenantId  Int?     // For multi-tenancy - references the tenant owner User.id
+  isActive  Boolean  @default(true)
+  
+  // Relations
+  projects     Project[]
+  activityLogs ActivityLog[]
+  archetype    RoleArchetype? @relation(fields: [archetypeId], references: [id])
+  tenant       User?          @relation("TenantUsers", fields: [tenantId], references: [id])
+  tenantUsers  User[]         @relation("TenantUsers")
+  roleMappings TenantRoleMapping[] @relation("TenantRoleMappings")
+  
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  OPERATOR
+}
+
+model RoleArchetype {
+  id           Int      @id @default(autoincrement())
+  createdAt    DateTime @default(now())
+  
+  code         String   @unique // e.g., "ADMIN", "MANAGER", "OPERATOR", "INSPECTOR"
+  defaultLabel String   // e.g., "Administrator", "Manager", "Operator", "Inspector"
+  description  String   // Detailed description of the role
+  isActive     Boolean  @default(true)
+  
+  // Relations
+  tenantMappings TenantRoleMapping[]
+  users          User[]
+  
+  @@map("role_archetypes")
+}
+
+model TenantRoleMapping {
+  id           Int      @id @default(autoincrement())
+  createdAt    DateTime @default(now())
+  
+  tenantId     Int      // References User.id (tenant owner)
+  archetypeId  Int
+  customLabel  String?  // Custom label for this archetype in this tenant
+  icon         String?  // Icon identifier
+  color        String?  // Color hex code
+  isEnabled    Boolean  @default(true)
+  
+  // Relations
+  tenant       User         @relation("TenantRoleMappings", fields: [tenantId], references: [id])
+  archetype    RoleArchetype @relation(fields: [archetypeId], references: [id])
+  
+  @@unique([tenantId, archetypeId])
+  @@map("tenant_role_mappings")
+}
+
+model Project {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  
+  name        String
+  description String?
+  status      ProjectStatus @default(DRAFT)
+  
+  // Relations
+  userId      Int
+  user        User          @relation(fields: [userId], references: [id])
+  codes       OptropicCode[]
+  keys        Key[]
+  contents    Content[]
+  assets      Asset[]
+  configPacks TenantConfigPack[]
+  
+  @@map("projects")
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+model OptropicCode {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  
+  codeValue       String        @unique
+  codeType        CodeType
+  encryptionLevel EncryptionLevel @default(AES_128)
+  isActive        Boolean       @default(true)
+  
+  // GS1 Digital Link support
+  gs1DigitalLink String?
+  
+  // Relations
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id])
+  keyId     Int?
+  key       Key?    @relation(fields: [keyId], references: [id])
+  assetId   Int?
+  asset     Asset?  @relation(fields: [assetId], references: [id])
+  scans     Scan[]
+  
+  @@map("optropic_codes")
+}
+
+enum CodeType {
+  OPTROPIC
+  QRSSL
+  GS1_COMPLIANT
+}
+
+enum EncryptionLevel {
+  AES_128
+  AES_256
+  RSA_2048
+  RSA_4096
+}
+
+model Key {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  
+  keyName     String
+  keyType     KeyType
+  keyValue    String  // encrypted key value
+  isActive    Boolean @default(true)
+  expiresAt   DateTime?
+  
+  // Key pairing for dual verification
+  pairedKeyId Int?
+  pairedKey   Key?  @relation("KeyPairing", fields: [pairedKeyId], references: [id])
+  pairedWith  Key[] @relation("KeyPairing")
+  
+  // Relations
+  projectId Int
+  project   Project        @relation(fields: [projectId], references: [id])
+  codes     OptropicCode[]
+  
+  @@map("keys")
+}
+
+enum KeyType {
+  ENCRYPTION
+  SIGNING
+  NFC_PAIRING
+  RFID_PAIRING
+}
+
+model Content {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  
+  title       String
+  contentType ContentType
+  url         String?
+  fileUrl     String?
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  
+  // Dynamic redirect logic
+  redirectRules Json?
+  
+  // Relations
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id])
+  
+  @@map("contents")
+}
+
+enum ContentType {
+  URL_REDIRECT
+  LANDING_PAGE
+  PDF_DOCUMENT
+  IMAGE
+  VIDEO
+  CAMPAIGN
+}
+
+model Asset {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  
+  assetName    String
+  serialNumber String?
+  batchNumber  String?
+  productId    String?
+  assetType    AssetType
+  
+  // Relations
+  projectId Int
+  project   Project        @relation(fields: [projectId], references: [id])
+  codes     OptropicCode[]
+  
+  @@map("assets")
+}
+
+enum AssetType {
+  PRODUCT
+  PACKAGE
+  BATCH
+  EQUIPMENT
+  DOCUMENT
+}
+
+model Scan {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  
+  // Scan details
+  ipAddress   String?
+  userAgent   String?
+  deviceType  DeviceType?
+  region      String?
+  country     String?
+  city        String?
+  
+  // Security flags
+  isSuspicious Boolean @default(false)
+  riskScore    Float?
+  
+  // Relations
+  codeId Int
+  code   OptropicCode @relation(fields: [codeId], references: [id])
+  
+  @@map("scans")
+}
+
+enum DeviceType {
+  MOBILE
+  DESKTOP
+  TABLET
+  IOT_DEVICE
+  SCANNER
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  
+  action      String
+  entityType  String
+  entityId    Int?
+  oldValues   Json?
+  newValues   Json?
+  ipAddress   String?
+  userAgent   String?
+  
+  // Relations
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+  
+  @@map("activity_logs")
+}
+
+model TenantConfigPack {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  
+  name        String
+  description String?  // Description of the config pack template
+  useCase     UseCase
+  roles       UserRoleType[]
+  actions     Json // Map of role -> actions[]
+  productList Json // Array of {gtin?, batch?, serial?, name?}
+  configJson  Json // Complete generated configuration
+  isActive    Boolean @default(true)
+  
+  // Relations
+  projectId Int?
+  project   Project? @relation(fields: [projectId], references: [id])
+  
+  @@map("tenant_config_packs")
+}
+
+enum UseCase {
+  AUTHENTICATION
+  MAINTENANCE
+  COMPLIANCE
+  ENGAGEMENT
+}
+
+enum UserRoleType {
+  INSTALLER
+  INSPECTOR
+  MAINTAINER
+  MANAGER
+  PUBLIC
+}
+
+enum ActionType {
+  VERIFY
+  LOG
+  INSPECT
+  VIEW_INFO
+}
