@@ -1,0 +1,232 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "optropic-platform",
+    "title": "Optropic Platform Metrics",
+    "tags": ["optropic", "nodejs", "monitoring"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "type": "graph",
+        "title": "HTTP Request Rate",
+        "targets": [
+          {
+            "expr": "rate(optropic_http_requests_total[5m])",
+            "legendFormat": "{{method}} {{route}} - {{status_code}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Requests/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 2,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "type": "graph",
+        "title": "HTTP Request Duration (P95)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(optropic_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{route}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Duration"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 3,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "type": "graph",
+        "title": "tRPC Call Rate",
+        "targets": [
+          {
+            "expr": "rate(optropic_trpc_calls_total[5m])",
+            "legendFormat": "{{procedure}} - {{status}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Calls/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 4,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "type": "graph",
+        "title": "tRPC Call Duration (P95)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(optropic_trpc_call_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{procedure}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Duration"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 5,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "type": "graph",
+        "title": "Error Rate",
+        "targets": [
+          {
+            "expr": "rate(optropic_errors_total[5m])",
+            "legendFormat": "{{type}} - {{severity}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "errps", "label": "Errors/sec"},
+          {"format": "short"}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [0.1], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "High Error Rate",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 6,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "type": "graph",
+        "title": "Database Query Duration",
+        "targets": [
+          {
+            "expr": "rate(optropic_db_query_duration_seconds_sum[5m]) / rate(optropic_db_query_duration_seconds_count[5m])",
+            "legendFormat": "{{operation}} on {{table}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Duration"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 7,
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 24},
+        "type": "graph",
+        "title": "Memory Usage",
+        "targets": [
+          {
+            "expr": "optropic_nodejs_heap_size_used_bytes",
+            "legendFormat": "Heap Used"
+          },
+          {
+            "expr": "optropic_nodejs_heap_size_total_bytes",
+            "legendFormat": "Heap Total"
+          },
+          {
+            "expr": "optropic_process_resident_memory_bytes",
+            "legendFormat": "RSS"
+          }
+        ],
+        "yaxes": [
+          {"format": "bytes", "label": "Memory"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 8,
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 24},
+        "type": "graph",
+        "title": "CPU Usage",
+        "targets": [
+          {
+            "expr": "rate(optropic_process_cpu_user_seconds_total[5m])",
+            "legendFormat": "User"
+          },
+          {
+            "expr": "rate(optropic_process_cpu_system_seconds_total[5m])",
+            "legendFormat": "System"
+          }
+        ],
+        "yaxes": [
+          {"format": "percentunit", "label": "CPU"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 9,
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 24},
+        "type": "graph",
+        "title": "Event Loop Lag",
+        "targets": [
+          {
+            "expr": "optropic_nodejs_eventloop_lag_seconds",
+            "legendFormat": "Event Loop Lag"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Lag"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 10,
+        "gridPos": {"h": 6, "w": 12, "x": 0, "y": 32},
+        "type": "singlestat",
+        "title": "Authentication Success Rate",
+        "targets": [
+          {
+            "expr": "rate(optropic_auth_attempts_total{status=\"success\"}[5m]) / rate(optropic_auth_attempts_total[5m]) * 100"
+          }
+        ],
+        "format": "percent",
+        "valueName": "current"
+      },
+      {
+        "id": 11,
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 32},
+        "type": "singlestat",
+        "title": "Active Connections",
+        "targets": [
+          {
+            "expr": "optropic_active_connections"
+          }
+        ],
+        "format": "none",
+        "valueName": "current"
+      },
+      {
+        "id": 12,
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 38},
+        "type": "table",
+        "title": "Recent Errors",
+        "targets": [
+          {
+            "expr": "topk(10, optropic_errors_total)",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transform": "table",
+        "columns": [
+          {"text": "Type", "value": "type"},
+          {"text": "Severity", "value": "severity"},
+          {"text": "Count", "value": "Value"}
+        ]
+      }
+    ]
+  }
+}

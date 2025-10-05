@@ -1,0 +1,115 @@
+# Prometheus Alert Rules for Optropic Platform
+
+groups:
+  - name: optropic_platform_alerts
+    interval: 30s
+    rules:
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: rate(optropic_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: optropic-platform
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanize }} errors/sec (threshold: 0.1)"
+
+      # Critical error rate alert
+      - alert: CriticalErrorRate
+        expr: rate(optropic_errors_total[5m]) > 1
+        for: 2m
+        labels:
+          severity: critical
+          service: optropic-platform
+        annotations:
+          summary: "Critical error rate detected"
+          description: "Error rate is {{ $value | humanize }} errors/sec (threshold: 1.0)"
+
+      # High latency alert (P95 > 500ms)
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(optropic_http_request_duration_seconds_bucket[5m])) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          service: optropic-platform
+        annotations:
+          summary: "High request latency detected"
+          description: "P95 latency is {{ $value | humanize }}s (threshold: 0.5s)"
+
+      # Critical latency alert (P95 > 2s)
+      - alert: CriticalLatency
+        expr: histogram_quantile(0.95, rate(optropic_http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: critical
+          service: optropic-platform
+        annotations:
+          summary: "Critical request latency detected"
+          description: "P95 latency is {{ $value | humanize }}s (threshold: 2s)"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: optropic_nodejs_heap_size_used_bytes / optropic_nodejs_heap_size_total_bytes > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          service: optropic-platform
+        annotations:
+          summary: "High memory usage detected"
+          description: "Heap usage is {{ $value | humanizePercentage }} (threshold: 90%)"
+
+      # Database query slow
+      - alert: SlowDatabaseQueries
+        expr: rate(optropic_db_query_duration_seconds_sum[5m]) / rate(optropic_db_query_duration_seconds_count[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: optropic-platform
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Average query duration is {{ $value | humanize }}s (threshold: 0.1s)"
+
+      # Authentication failure spike
+      - alert: HighAuthFailureRate
+        expr: rate(optropic_auth_attempts_total{status="failure"}[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: optropic-platform
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Auth failure rate is {{ $value | humanize }}/sec (threshold: 0.5)"
+
+      # Service down
+      - alert: ServiceDown
+        expr: up{job="optropic-platform"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: optropic-platform
+        annotations:
+          summary: "Optropic Platform service is down"
+          description: "The application has been unreachable for 1 minute"
+
+      # Event loop lag
+      - alert: HighEventLoopLag
+        expr: optropic_nodejs_eventloop_lag_seconds > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: optropic-platform
+        annotations:
+          summary: "High Node.js event loop lag"
+          description: "Event loop lag is {{ $value | humanize }}s (threshold: 0.1s)"
+
+      # Low authentication success rate
+      - alert: LowAuthSuccessRate
+        expr: rate(optropic_auth_attempts_total{status="success"}[5m]) / rate(optropic_auth_attempts_total[5m]) < 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: optropic-platform
+        annotations:
+          summary: "Low authentication success rate"
+          description: "Auth success rate is {{ $value | humanizePercentage }} (threshold: 80%)"

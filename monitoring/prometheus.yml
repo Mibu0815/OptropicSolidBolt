@@ -1,0 +1,52 @@
+# Prometheus Configuration for Optropic Platform
+# This configuration scrapes metrics from the application
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'optropic-platform'
+    environment: 'production'
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+# Rule files for alerts
+rule_files:
+  - 'alerts.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Optropic Platform application metrics
+  - job_name: 'optropic-platform'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/api/metrics'
+    static_configs:
+      - targets: ['localhost:3000']
+        labels:
+          service: 'optropic-platform'
+          env: 'production'
+
+  # For staging environment (if separate)
+  - job_name: 'optropic-platform-staging'
+    scrape_interval: 30s
+    metrics_path: '/api/metrics'
+    static_configs:
+      - targets: ['staging.yourdomain.com']
+        labels:
+          service: 'optropic-platform'
+          env: 'staging'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node exporter (if using for system metrics)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
