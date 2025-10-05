@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import jwt from "jsonwebtoken";
 import { db } from "../db";
 import { env } from "../env";
+import { checkRateLimit } from "../middleware/rateLimitStore";
 
 interface Context {
   req?: any;
@@ -12,6 +13,16 @@ interface Context {
     email: string;
     role: string;
   };
+}
+
+function getClientIp(req: any): string {
+  return (
+    req?.headers?.get?.("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req?.headers?.["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req?.socket?.remoteAddress ||
+    req?.connection?.remoteAddress ||
+    "unknown"
+  );
 }
 
 const t = initTRPC.context<Context>().create({
@@ -36,6 +47,27 @@ const t = initTRPC.context<Context>().create({
       },
     };
   },
+});
+
+const rateLimitMiddleware = t.middleware(async ({ ctx, next, path }) => {
+  const ip = getClientIp(ctx.req);
+  const isAuthEndpoint = path?.includes("login") || path?.includes("auth");
+
+  const windowMs = isAuthEndpoint ? 60000 : 900000;
+  const maxRequests = isAuthEndpoint ? 5 : 100;
+
+  const { allowed } = checkRateLimit(ip, windowMs, maxRequests);
+
+  if (!allowed) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: isAuthEndpoint
+        ? "Too many authentication attempts. Please try again in 1 minute."
+        : "Rate limit exceeded. Please slow down your requests.",
+    });
+  }
+
+  return next();
 });
 
 const isAuthed = t.middleware(async ({ ctx, next }) => {
@@ -91,5 +123,5 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
 export const createCallerFactory = t.createCallerFactory;
 export const createTRPCRouter = t.router;
 export const baseProcedure = t.procedure;
-export const protectedProcedure = t.procedure.use(isAuthed);
-export const publicProcedure = t.procedure;
+export const protectedProcedure = t.procedure.use(rateLimitMiddleware).use(isAuthed);
+export const publicProcedure = t.procedure.use(rateLimitMiddleware);

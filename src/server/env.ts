@@ -36,8 +36,22 @@ const envSchema = z.object({
 
 export const env = envSchema.parse(process.env);
 
-if (!process.env.IN_BOLT) {
+const isProduction = env.NODE_ENV === "production";
+const inBolt = process.env.IN_BOLT === "true";
+
+if (!inBolt) {
   console.log("✅ Environment validated");
+
+  if (isProduction) {
+    const hasDefaultJWT = env.JWT_SECRET.includes("default-jwt-secret");
+    const hasDefaultSecret = env.SECRET_KEY.includes("default-secret-key");
+
+    if (hasDefaultJWT || hasDefaultSecret) {
+      console.warn("⚠️  WARNING: Using default secrets in production!");
+      console.warn("⚠️  Please set JWT_SECRET and SECRET_KEY to secure random values");
+      console.warn("⚠️  Generate with: node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"");
+    }
+  }
 } else {
   console.log("⚙️  Running inside BOLT preview - using fallback environment");
 }
