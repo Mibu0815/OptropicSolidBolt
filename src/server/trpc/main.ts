@@ -8,6 +8,7 @@ import { env } from "../env";
 import { checkRateLimit } from "../middleware/rateLimitStore";
 import { createRequestLogger, logError } from "../utils/logger";
 import { captureError, setUser } from "../utils/sentry";
+import { trpcCallDuration, trpcCallTotal, errorTotal, authAttempts } from "../services/metricsService";
 
 interface Context {
   req?: any;
@@ -61,6 +62,7 @@ const loggingMiddleware = t.middleware(async ({ ctx, next, path }) => {
   logger.info({ path }, "tRPC request started");
 
   const startTime = Date.now();
+  const endTimer = trpcCallDuration.startTimer({ procedure: path || "unknown" });
 
   try {
     const result = await next({
@@ -71,12 +73,17 @@ const loggingMiddleware = t.middleware(async ({ ctx, next, path }) => {
       },
     });
 
-    const duration = Date.now() - startTime;
+    const duration = (Date.now() - startTime) / 1000;
+    endTimer({ status: "success" });
+    trpcCallTotal.inc({ procedure: path || "unknown", status: "success" });
     logger.info({ path, duration }, "tRPC request completed");
 
     return result;
   } catch (error) {
-    const duration = Date.now() - startTime;
+    const duration = (Date.now() - startTime) / 1000;
+    endTimer({ status: "error" });
+    trpcCallTotal.inc({ procedure: path || "unknown", status: "error" });
+    errorTotal.inc({ type: "trpc", severity: "error" });
     logger.error({ path, duration, error }, "tRPC request failed");
     throw error;
   }
@@ -140,6 +147,7 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
 
     ctx.logger?.info({ userId: user.id, email: user.email }, "User authenticated");
     setUser({ id: user.id, email: user.email });
+    authAttempts.inc({ status: "success" });
 
     return next({
       ctx: {
@@ -154,6 +162,7 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
   } catch (error) {
     ctx.logger?.error({ error }, "Authentication failed");
     captureError(error as Error, { requestId: ctx.requestId });
+    authAttempts.inc({ status: "failure" });
     throw new TRPCError({
       code: "UNAUTHORIZED",
       message: "Invalid or expired token",
