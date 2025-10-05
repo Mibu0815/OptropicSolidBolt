@@ -1,6 +1,7 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./root";
 import { corsConfig } from "../middleware/cors";
+import { logger, logError } from "../utils/logger";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": corsConfig.origin[0] || "*",
@@ -32,7 +33,7 @@ export default async function handler(event: any) {
         return { req: request };
       },
       onError({ error, path }) {
-        console.error(`tRPC error on '${path}':`, error);
+        logError(error, { path });
       },
     });
 
@@ -42,7 +43,7 @@ export default async function handler(event: any) {
 
     return response;
   } catch (error) {
-    console.error("Handler error:", error);
+    logError(error, { handler: "tRPC" });
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: {

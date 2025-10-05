@@ -13,6 +13,9 @@ const envSchema = z.object({
   SECRET_KEY: z.string().default("default-secret-key-change-in-production"),
   ENCRYPTION_ALGORITHM: z.string().optional(),
 
+  // Monitoring & Logging
+  SENTRY_DSN: z.string().optional(),
+
   // AI Integration
   OPENROUTER_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),

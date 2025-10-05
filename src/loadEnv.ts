@@ -19,4 +19,10 @@ if (result.error) {
 console.log("🌍 Running in:", process.env.IN_BOLT ? "BOLT Sandbox" : process.env.NODE_ENV || "development");
 console.log("✅ Environment loaded successfully for preview.");
 
+if (typeof window === "undefined") {
+  import("./server/utils/sentry").then((sentry) => {
+    sentry.initSentry();
+  });
+}
+
 export {};

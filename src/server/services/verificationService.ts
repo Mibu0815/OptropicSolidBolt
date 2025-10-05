@@ -13,6 +13,7 @@ import { db } from "../db";
 import { verifySignature } from "./keyService";
 import { CodeService } from "./codeService";
 import { NotificationService } from "./notificationService";
+import { logger, logError } from "../utils/logger";
 
 export interface VerificationRequest {
   codeValue: string;
@@ -172,7 +173,7 @@ export const VerificationService = {
           code.id,
           code.project.userId
         ).catch((err) =>
-          console.error("Failed to send revoked code notification:", err)
+          logError(err, { codeId: code.id, userId: code.project.userId })
         );
 
         return {

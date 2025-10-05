@@ -2,12 +2,17 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { db } from "../db";
 import { env } from "../env";
 import { checkRateLimit } from "../middleware/rateLimitStore";
+import { createRequestLogger, logError } from "../utils/logger";
+import { captureError, setUser } from "../utils/sentry";
 
 interface Context {
   req?: any;
+  requestId?: string;
+  logger?: ReturnType<typeof createRequestLogger>;
   user?: {
     id: number;
     email: string;
@@ -49,6 +54,34 @@ const t = initTRPC.context<Context>().create({
   },
 });
 
+const loggingMiddleware = t.middleware(async ({ ctx, next, path }) => {
+  const requestId = crypto.randomUUID();
+  const logger = createRequestLogger(requestId);
+
+  logger.info({ path }, "tRPC request started");
+
+  const startTime = Date.now();
+
+  try {
+    const result = await next({
+      ctx: {
+        ...ctx,
+        requestId,
+        logger,
+      },
+    });
+
+    const duration = Date.now() - startTime;
+    logger.info({ path, duration }, "tRPC request completed");
+
+    return result;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    logger.error({ path, duration, error }, "tRPC request failed");
+    throw error;
+  }
+});
+
 const rateLimitMiddleware = t.middleware(async ({ ctx, next, path }) => {
   const ip = getClientIp(ctx.req);
   const isAuthEndpoint = path?.includes("login") || path?.includes("auth");
@@ -59,6 +92,7 @@ const rateLimitMiddleware = t.middleware(async ({ ctx, next, path }) => {
   const { allowed } = checkRateLimit(ip, windowMs, maxRequests);
 
   if (!allowed) {
+    ctx.logger?.warn({ ip, path }, "Rate limit exceeded");
     throw new TRPCError({
       code: "TOO_MANY_REQUESTS",
       message: isAuthEndpoint
@@ -74,6 +108,7 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
   const authHeader = ctx.req?.headers?.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    ctx.logger?.warn("Missing authorization header");
     throw new TRPCError({
       code: "UNAUTHORIZED",
       message: "No authorization token provided",
@@ -96,11 +131,15 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
     });
 
     if (!user || !user.isActive) {
+      ctx.logger?.warn({ userId: decoded.userId }, "Invalid or inactive user");
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Invalid or expired token",
       });
     }
+
+    ctx.logger?.info({ userId: user.id, email: user.email }, "User authenticated");
+    setUser({ id: user.id, email: user.email });
 
     return next({
       ctx: {
@@ -113,6 +152,8 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
       },
     });
   } catch (error) {
+    ctx.logger?.error({ error }, "Authentication failed");
+    captureError(error as Error, { requestId: ctx.requestId });
     throw new TRPCError({
       code: "UNAUTHORIZED",
       message: "Invalid or expired token",
@@ -122,6 +163,11 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
 
 export const createCallerFactory = t.createCallerFactory;
 export const createTRPCRouter = t.router;
-export const baseProcedure = t.procedure;
-export const protectedProcedure = t.procedure.use(rateLimitMiddleware).use(isAuthed);
-export const publicProcedure = t.procedure.use(rateLimitMiddleware);
+export const baseProcedure = t.procedure.use(loggingMiddleware);
+export const protectedProcedure = t.procedure
+  .use(loggingMiddleware)
+  .use(rateLimitMiddleware)
+  .use(isAuthed);
+export const publicProcedure = t.procedure
+  .use(loggingMiddleware)
+  .use(rateLimitMiddleware);
