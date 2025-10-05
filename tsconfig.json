@@ -20,7 +20,9 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "@optropic/shared": ["./packages/shared/src/index.ts"],
+      "@optropic/shared/*": ["./packages/shared/src/*"]
     },
     "noEmit": true
   }

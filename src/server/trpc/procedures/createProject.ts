@@ -1,16 +1,13 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import jwt from "jsonwebtoken";
+import { CreateProjectSchema } from "@optropic/shared";
 import { db } from "~/server/db";
 import { env } from "~/server/env";
 import { baseProcedure } from "~/server/trpc/main";
 
 export const createProject = baseProcedure
-  .input(z.object({ 
-    token: z.string(),
-    name: z.string().min(1, "Project name is required"),
-    description: z.string().optional(),
-  }))
+  .input(CreateProjectSchema)
   .mutation(async ({ input }) => {
     try {
       const verified = jwt.verify(input.token, env.JWT_SECRET);

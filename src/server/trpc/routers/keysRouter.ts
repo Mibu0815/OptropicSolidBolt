@@ -3,6 +3,13 @@
  */
 
 import { z } from "zod";
+import {
+  GenerateKeySchema,
+  ListKeysSchema,
+  RotateKeySchema,
+  RevokeKeySchema,
+  GetActiveKeysSchema,
+} from "@optropic/shared";
 import { protectedProcedure, createTRPCRouter } from "../main";
 import { KeyService } from "../../services/keyService";
 import { db } from "../../db";
@@ -12,14 +19,7 @@ export const keysRouter = createTRPCRouter({
    * Generate a new key
    */
   generate: protectedProcedure
-    .input(
-      z.object({
-        projectId: z.number(),
-        keyName: z.string(),
-        keyType: z.enum(["ENCRYPTION", "SIGNING", "NFC_PAIRING", "RFID_PAIRING"]),
-        expiresAt: z.string().optional(),
-      })
-    )
+    .input(GenerateKeySchema)
     .mutation(async ({ input, ctx }) => {
       const project = await db.project.findFirst({
         where: {
@@ -59,11 +59,7 @@ export const keysRouter = createTRPCRouter({
    * List keys for a project
    */
   list: protectedProcedure
-    .input(
-      z.object({
-        projectId: z.number(),
-      })
-    )
+    .input(ListKeysSchema)
     .query(async ({ input, ctx }) => {
       const project = await db.project.findFirst({
         where: {
@@ -83,11 +79,7 @@ export const keysRouter = createTRPCRouter({
    * Rotate a key
    */
   rotate: protectedProcedure
-    .input(
-      z.object({
-        keyId: z.number(),
-      })
-    )
+    .input(RotateKeySchema)
     .mutation(async ({ input, ctx }) => {
       const existingKey = await db.key.findFirst({
         where: {
@@ -128,11 +120,7 @@ export const keysRouter = createTRPCRouter({
    * Revoke a key
    */
   revoke: protectedProcedure
-    .input(
-      z.object({
-        keyId: z.number(),
-      })
-    )
+    .input(RevokeKeySchema)
     .mutation(async ({ input, ctx }) => {
       const key = await db.key.findFirst({
         where: {
@@ -184,11 +172,7 @@ export const keysRouter = createTRPCRouter({
    * Get active keys
    */
   getActive: protectedProcedure
-    .input(
-      z.object({
-        projectId: z.number(),
-      })
-    )
+    .input(GetActiveKeysSchema)
     .query(async ({ input, ctx }) => {
       const project = await db.project.findFirst({
         where: {

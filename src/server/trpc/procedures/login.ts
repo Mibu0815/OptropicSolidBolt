@@ -1,15 +1,12 @@
-import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
+import { AuthLoginSchema } from "@optropic/shared";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { createTokenPair } from "~/server/services/refreshTokenService";
 
 export const login = baseProcedure
-  .input(z.object({ 
-    email: z.string().email(),
-    password: z.string().min(1),
-  }))
+  .input(AuthLoginSchema)
   .mutation(async ({ input }) => {
     const user = await db.user.findUnique({
       where: { email: input.email },

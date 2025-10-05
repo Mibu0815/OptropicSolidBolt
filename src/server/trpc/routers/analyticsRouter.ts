@@ -3,6 +3,12 @@
  */
 
 import { z } from "zod";
+import {
+  GetProjectAnalyticsSchema,
+  DetectAnomaliesSchema,
+  GetTimeSeriesSchema,
+  GetComparativeSchema,
+} from "@optropic/shared";
 import { protectedProcedure, createTRPCRouter } from "../main";
 import { AnalyticsService } from "../../services/analyticsService";
 import { db } from "../../db";
@@ -20,12 +26,7 @@ export const analyticsRouter = createTRPCRouter({
    * Get detailed project analytics
    */
   getProjectAnalytics: protectedProcedure
-    .input(
-      z.object({
-        projectId: z.number(),
-        days: z.number().optional().default(30),
-      })
-    )
+    .input(GetProjectAnalyticsSchema)
     .query(async ({ input, ctx }) => {
       const project = await db.project.findFirst({
         where: {
@@ -48,12 +49,7 @@ export const analyticsRouter = createTRPCRouter({
    * Detect anomalies in scan patterns
    */
   detectAnomalies: protectedProcedure
-    .input(
-      z.object({
-        projectId: z.number(),
-        threshold: z.number().optional().default(2.0),
-      })
-    )
+    .input(DetectAnomaliesSchema)
     .query(async ({ input, ctx }) => {
       const project = await db.project.findFirst({
         where: {
@@ -99,14 +95,7 @@ export const analyticsRouter = createTRPCRouter({
    * Get time-series data for custom date range
    */
   getTimeSeries: protectedProcedure
-    .input(
-      z.object({
-        projectId: z.number(),
-        startDate: z.string(),
-        endDate: z.string(),
-        metric: z.enum(["scans", "verifications", "trustScore"]),
-      })
-    )
+    .input(GetTimeSeriesSchema)
     .query(async ({ input, ctx }) => {
       const project = await db.project.findFirst({
         where: {
@@ -181,12 +170,7 @@ export const analyticsRouter = createTRPCRouter({
    * Get comparative analytics across projects
    */
   getComparative: protectedProcedure
-    .input(
-      z.object({
-        projectIds: z.array(z.number()),
-        days: z.number().optional().default(30),
-      })
-    )
+    .input(GetComparativeSchema)
     .query(async ({ input, ctx }) => {
       const projects = await db.project.findMany({
         where: {
