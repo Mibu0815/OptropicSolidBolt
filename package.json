@@ -6,7 +6,7 @@
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
-    "preview": "node .output/server/index.mjs",
+    "preview": "node server.cjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . -c eslint.config.mjs --max-warnings 0",
     "db:generate": "prisma migrate dev",
