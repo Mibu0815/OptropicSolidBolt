@@ -3,6 +3,8 @@ import {
   createTRPCRouter,
 } from "~/server/trpc/main";
 import { login } from "./procedures/login";
+import { logout } from "./procedures/logout";
+import { refreshToken } from "./procedures/refreshToken";
 import { getCurrentUser } from "./procedures/getCurrentUser";
 import { getProjects } from "./procedures/getProjects";
 import { createProject } from "./procedures/createProject";
@@ -21,6 +23,8 @@ import { notificationsRouter } from "./routers/notificationsRouter";
 export const appRouter = createTRPCRouter({
   // Authentication
   login,
+  logout,
+  refreshToken,
   getCurrentUser,
 
   // Project Management

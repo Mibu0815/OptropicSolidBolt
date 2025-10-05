@@ -25,13 +25,15 @@ model User {
   isActive  Boolean  @default(true)
   
   // Relations
-  projects      Project[]
-  activityLogs  ActivityLog[]
-  notifications Notification[]
-  archetype     RoleArchetype?      @relation(fields: [archetypeId], references: [id])
-  tenant        User?               @relation("TenantUsers", fields: [tenantId], references: [id])
-  tenantUsers   User[]              @relation("TenantUsers")
-  roleMappings  TenantRoleMapping[] @relation("TenantRoleMappings")
+  projects         Project[]
+  tenantProjects   Project[]             @relation("ProjectTenant")
+  activityLogs     ActivityLog[]
+  notifications    Notification[]
+  refreshTokens    RefreshToken[]
+  archetype        RoleArchetype?        @relation(fields: [archetypeId], references: [id])
+  tenant           User?                 @relation("TenantUsers", fields: [tenantId], references: [id])
+  tenantUsers      User[]                @relation("TenantUsers")
+  roleMappings     TenantRoleMapping[]   @relation("TenantRoleMappings")
 
   @@map("users")
 }
@@ -80,14 +82,16 @@ model TenantRoleMapping {
 model Project {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
-  
+
   name        String
   description String?
   status      ProjectStatus @default(DRAFT)
-  
+
   // Relations
   userId         Int
+  tenantId       Int?
   user           User                 @relation(fields: [userId], references: [id])
+  tenant         User?                @relation("ProjectTenant", fields: [tenantId], references: [id])
   codes          OptropicCode[]
   keys           Key[]
   contents       Content[]
@@ -123,6 +127,7 @@ model OptropicCode {
 
   // Relations
   projectId Int
+  tenantId  Int?
   project   Project @relation(fields: [projectId], references: [id])
   keyId     Int?
   key       Key?    @relation(fields: [keyId], references: [id])
@@ -165,6 +170,7 @@ model Key {
 
   // Relations
   projectId Int
+  tenantId  Int?
   project   Project        @relation(fields: [projectId], references: [id])
   codes     OptropicCode[]
 
@@ -197,6 +203,7 @@ model Content {
 
   // Relations
   projectId Int
+  tenantId  Int?
   project   Project @relation(fields: [projectId], references: [id])
 
   @@map("contents")
@@ -214,18 +221,19 @@ enum ContentType {
 model Asset {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
-  
+
   assetName    String
   serialNumber String?
   batchNumber  String?
   productId    String?
   assetType    AssetType
-  
+
   // Relations
   projectId Int
+  tenantId  Int?
   project   Project        @relation(fields: [projectId], references: [id])
   codes     OptropicCode[]
-  
+
   @@map("assets")
 }
 
@@ -260,8 +268,9 @@ model Scan {
   riskScore    Float?
 
   // Relations
-  codeId Int
-  code   OptropicCode @relation(fields: [codeId], references: [id])
+  codeId   Int
+  tenantId Int?
+  code     OptropicCode @relation(fields: [codeId], references: [id])
 
   @@map("scans")
 }
@@ -277,7 +286,7 @@ enum DeviceType {
 model ActivityLog {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
-  
+
   action      String
   entityType  String
   entityId    Int?
@@ -285,11 +294,12 @@ model ActivityLog {
   newValues   Json?
   ipAddress   String?
   userAgent   String?
-  
+
   // Relations
-  userId Int
-  user   User @relation(fields: [userId], references: [id])
-  
+  userId   Int
+  tenantId Int?
+  user     User @relation(fields: [userId], references: [id])
+
   @@map("activity_logs")
 }
 
@@ -308,6 +318,7 @@ model TenantConfigPack {
 
   // Relations
   projectId Int?
+  tenantId  Int?
   project   Project? @relation(fields: [projectId], references: [id])
 
   @@map("tenant_config_packs")
@@ -342,6 +353,7 @@ model AnalyticsCache {
   createdAt DateTime @default(now())
 
   projectId Int
+  tenantId  Int?
   cacheKey  String
   data      Json
   expiresAt DateTime
@@ -350,4 +362,20 @@ model AnalyticsCache {
 
   @@unique([projectId, cacheKey])
   @@map("analytics_cache")
+}
+
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+
+  userId    Int
+  tokenHash String
+  expiresAt DateTime
+  revoked   Boolean   @default(false)
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tokenHash])
+  @@map("refresh_tokens")
 }

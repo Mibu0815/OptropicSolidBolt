@@ -1,10 +1,9 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { db } from "~/server/db";
-import { env } from "~/server/env";
 import { baseProcedure } from "~/server/trpc/main";
+import { createTokenPair } from "~/server/services/refreshTokenService";
 
 export const login = baseProcedure
   .input(z.object({ 
@@ -41,11 +40,7 @@ export const login = baseProcedure
       });
     }
 
-    const token = jwt.sign(
-      { userId: user.id },
-      env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const tokens = await createTokenPair(user.id);
 
     // Get the primary tenant role mapping (user's own tenant or first enabled mapping)
     const primaryRoleMapping = user.roleMappings.find(mapping => mapping.tenantId === user.id) || user.roleMappings[0];
@@ -56,11 +51,13 @@ export const login = baseProcedure
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role, // Keep for backward compatibility
+        role: user.role,
         archetype: user.archetype,
         tenantRoleMapping: primaryRoleMapping,
         tenantId: user.tenantId,
       },
-      token,
+      token: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresIn: tokens.expiresIn,
     };
   });
