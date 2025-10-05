@@ -148,20 +148,21 @@ export const analyticsRouter = createTRPCRouter({
       scans.forEach((scan) => {
         const date = scan.createdAt.toISOString().split("T")[0];
 
-        if (!dataPoints[date]) {
+        if (date && !dataPoints[date]) {
           dataPoints[date] = { date, value: 0, count: 0 };
         }
 
-        if (input.metric === "scans") {
-          dataPoints[date].value++;
+        if (date && input.metric === "scans") {
+          dataPoints[date]!.value++;
         } else if (
+          date &&
           input.metric === "verifications" &&
           scan.verificationSuccess
         ) {
-          dataPoints[date].value++;
-        } else if (input.metric === "trustScore" && scan.trustScore !== null) {
-          dataPoints[date].value += scan.trustScore;
-          dataPoints[date].count++;
+          dataPoints[date]!.value++;
+        } else if (date && input.metric === "trustScore" && scan.trustScore !== null) {
+          dataPoints[date]!.value += scan.trustScore;
+          dataPoints[date]!.count++;
         }
       });
 

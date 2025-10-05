@@ -77,7 +77,7 @@ function getDaysAgo(days: number): Date {
  * Format date as YYYY-MM-DD
  */
 function formatDate(date: Date): string {
-  return date.toISOString().split("T")[0];
+  return date.toISOString().split("T")[0]!;
 }
 
 /**
@@ -186,7 +186,7 @@ export const AnalyticsService = {
 
     const trends = dateLabels.map((label) => ({
       label,
-      scans: trendBuckets[label],
+      scans: trendBuckets[label] || 0,
     }));
 
     // 6️⃣ Key usage distribution by type
@@ -342,9 +342,9 @@ export const AnalyticsService = {
 
     const trends = dateLabels.map((label) => ({
       label,
-      scans: trendData[label].scans,
-      successful: trendData[label].successful,
-      failed: trendData[label].failed,
+      scans: trendData[label]?.scans || 0,
+      successful: trendData[label]?.successful || 0,
+      failed: trendData[label]?.failed || 0,
     }));
 
     // Geographic distribution
@@ -464,17 +464,24 @@ export const AnalyticsService = {
     const snapshot = await this.getOverview(userId);
 
     const cacheKey = userId ? `overview_user_${userId}` : "overview_global";
+    const projectId = 0;
 
     await db.analyticsCache.upsert({
-      where: { cacheKey },
+      where: {
+        projectId_cacheKey: {
+          projectId,
+          cacheKey,
+        },
+      },
       update: {
-        data: snapshot,
-        updatedAt: new Date(),
+        data: snapshot as any,
+        expiresAt: new Date(Date.now() + 3600000),
       },
       create: {
+        projectId,
         cacheKey,
-        cacheType: "OVERVIEW",
-        data: snapshot,
+        data: snapshot as any,
+        expiresAt: new Date(Date.now() + 3600000),
       },
     });
   },

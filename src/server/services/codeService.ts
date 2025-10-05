@@ -217,7 +217,7 @@ export const CodeService = {
         encryptionLevel,
         entropySeed,
         signature,
-        payload,
+        payload: payload as any,
         isActive: true,
         projectId,
         keyId,

@@ -1,5 +1,3 @@
-import { defineEventHandler, toWebRequest } from "@tanstack/react-start/server";
-
 interface LogEntry {
   level: string;
   message: string;
@@ -14,8 +12,9 @@ interface ClientLogRequest {
   logs: LogEntry[];
 }
 
-export default defineEventHandler(async (event) => {
-  const request = toWebRequest(event);
+export default async function handler(event: any) {
+  const request = event.request || event;
+
   if (!request || request.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
@@ -90,4 +89,4 @@ export default defineEventHandler(async (event) => {
       headers: { "Content-Type": "application/json" },
     });
   }
-});
+}

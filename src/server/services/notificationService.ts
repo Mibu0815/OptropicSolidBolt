@@ -495,6 +495,8 @@ export const NotificationService = {
       data: {
         email: "system@optropic.local",
         password: "disabled",
+        firstName: "System",
+        lastName: "User",
         role: "ADMIN",
         tenantId: null,
       },

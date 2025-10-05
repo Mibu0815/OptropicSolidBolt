@@ -79,18 +79,18 @@ function decryptPrivateKey(encryptedData: string): string {
     throw new Error("Invalid encrypted key format");
   }
 
-  const iv = Buffer.from(parts[0], "hex");
-  const authTag = Buffer.from(parts[1], "hex");
-  const encrypted = parts[2];
+  const iv = Buffer.from(parts[0]!, "hex");
+  const authTag = Buffer.from(parts[1]!, "hex");
+  const encrypted = parts[2]!;
 
   const key = Buffer.from(env.SECRET_KEY.padEnd(32, '0').substring(0, 32));
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(authTag);
 
-  let decrypted = decipher.update(encrypted, "hex", "utf8");
-  decrypted += decipher.final("utf8");
+  const decryptedBuffer = decipher.update(encrypted, "hex", "utf8");
+  const finalBuffer = decipher.final("utf8");
 
-  return decrypted;
+  return decryptedBuffer + finalBuffer;
 }
 
 /**
