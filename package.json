@@ -17,7 +17,7 @@
     "db:generate": "prisma migrate dev",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
-"vercel-build": "npm install --no-audit --no-fund && npm run build"
+"vercel-build": "npm install --no-audit --no-fund && npm run build",
     "db:studio": "prisma studio",
     "format": "prettier --write .",
     "shared:build": "cd packages/shared && npm run build",
